@@ -26,9 +26,9 @@ import time
 import xml.etree.ElementTree as ET
 import pandas as pd
 
-# API Keys Configuration
-GROQ_API_KEY = "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"
-GEMINI_API_KEY = "AIzaSyAzLMt-JM1smoMD7kA1CC4GO3-rPCgHb8s"
+# Default API Keys (May be expired)
+DEFAULT_GROQ_KEY = "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"
+DEFAULT_GEMINI_KEY = "AIzaSyAzLMt-JM1smoMD7kA1CC4GO3-rPCgHb8s"
 WOLFRAM_APPID = "LVT9LY-LYTPPU"
 NCBI_API_KEY = "6b3d9fed81852b6da5596971edcecddd4909"
 
@@ -56,6 +56,11 @@ if "token_usage" not in st.session_state:
 
 # Sidebar Configuration
 st.sidebar.title(f"{APP_NAME} Console")
+
+# Debug: Manual API Key Override
+st.sidebar.subheader("APIデバッグ設定")
+custom_gemini_key = st.sidebar.text_input("Gemini API Key (上書き用)", type="password")
+gemini_key = custom_gemini_key if custom_gemini_key else DEFAULT_GEMINI_KEY
 
 # 1. Broad Categories
 category_main = st.sidebar.selectbox("大カテゴリー", [
@@ -88,14 +93,12 @@ elif category_main == "工学・技術 (Engineering & Tech)":
         detail_item = st.sidebar.selectbox("詳細項目", ["ナノマテリアル", "半導体技術", "再生可能エネルギー"])
 
 elif category_main == "数学・統計学 (Mathematics)":
-    # 未解決問題カテゴリーを追加
     category_mid = st.sidebar.selectbox("中カテゴリー", ["純粋数学", "応用数学", "統計・データサイエンス", "数学上の未解決問題"])
     if category_mid == "純粋数学":
         detail_item = st.sidebar.selectbox("詳細項目", ["数論 (Wolfram)", "代数幾何", "位相幾何学"])
     elif category_mid == "応用数学":
         detail_item = st.sidebar.selectbox("詳細項目", ["微分方程式", "数値解析", "離散数学"])
     elif category_mid == "数学上の未解決問題":
-        # 未解決問題の詳細項目を追加
         detail_item = st.sidebar.selectbox("詳細項目", ["素数の分布", "双子素数の予想", "リーマン予想 (ミレニアム懸賞問題)", "P対NP問題", "ナビエ-ストークス方程式の解の存在"])
     else:
         detail_item = st.sidebar.selectbox("詳細項目", ["確率論", "多変量解析", "ベイズ統計"])
@@ -149,7 +152,7 @@ st.sidebar.caption(f"推定残り呼び出し可能容量: {st.session_state.tok
 # Helper Functions
 def call_groq(prompt, system_prompt=""):
     url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {DEFAULT_GROQ_KEY}", "Content-Type": "application/json"}
     temp = 0.1 + (expertise_slider * 0.15)
     max_tokens = token_slider * 600
     
@@ -164,19 +167,24 @@ def call_groq(prompt, system_prompt=""):
     }
     try:
         resp = requests.post(url, json=payload, headers=headers)
+        if resp.status_code != 200:
+            return f"エラー: Groq APIがステータスコード {resp.status_code} を返しました。"
         return resp.json()['choices'][0]['message']['content']
-    except:
-        return "エラー: Groq APIの呼び出しに失敗しました。"
+    except Exception as e:
+        return f"エラー: Groq APIの呼び出し中に例外が発生しました: {str(e)}"
 
 def call_gemini(prompt, system_prompt=""):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
     full_prompt = f"{system_prompt}\\n\\nユーザーの質問: {prompt}"
     payload = {"contents": [{"parts": [{"text": full_prompt}]}]}
     try:
         resp = requests.post(url, json=payload)
+        if resp.status_code != 200:
+            error_detail = resp.json().get('error', {}).get('message', '不明なエラー')
+            return f"エラー: Gemini APIがステータスコード {resp.status_code} を返しました。内容: {error_detail}"
         return resp.json()['candidates'][0]['content']['parts'][0]['text']
-    except:
-        return "エラー: Gemini APIの呼び出しに失敗しました。"
+    except Exception as e:
+        return f"エラー: Gemini APIの呼び出し中に例外が発生しました: {str(e)}"
 
 def search_arxiv(query):
     base_url = "http://export.arxiv.org/api/query?"
@@ -233,14 +241,14 @@ if prompt := st.chat_input("メッセージを入力してください"):
                 response = call_groq(f"Wolfram Alphaの結果: {wa_res} を踏まえ、厳密な数学的証明や学術的背景を含めた解説を行ってください。 問い: {prompt}")
             elif "未解決問題" in category_mid:
                 arxiv_res = search_arxiv(prompt)
-                response = call_groq(f"ArXivの最新論文情報: {arxiv_res} \\n 問い: {prompt} \\n 専門家として、この未解決問題の現状、困難さ、そして関連する最新の研究成果について論理的に解説してください。")
+                response = call_groq(f"ArXivの最新論文情報: {arxiv_res} \\n 問い: {prompt} \\n 専門家として、この未解決問題の現状、困難さ、研究成果について論理的に解説してください。")
             else:
-                response = call_groq(prompt, f"あなたは{detail_item}の専門家です。大学レベルの知見や数式、論理構造を用いて回答してください。")
+                response = call_groq(prompt, f"あなたは{detail_item}の専門家です。学術的な知見を用いて回答してください。")
                 
         else: # 一般会話
             sys_msg = "あなたはLuke-Botです。丁寧で健康的な対話を提供してください。"
             if "勉強" in detail_item:
-                sys_msg += f"{detail_item}について、中学生以下のユーザーにも分かりやすく教育的に解説してください。不適切な表現は避けてください。"
+                sys_msg += f"{detail_item}について、中学生以下のユーザーにも分かりやすく解説してください。不適切な表現は避けてください。"
             response = call_gemini(prompt, sys_msg)
 
         # Update token usage visualization
