@@ -144,7 +144,8 @@ def call_groq(prompt, system_prompt=""):
 def call_gemini(prompt, system_prompt=""):
     if not GEMINI_API_KEY:
         return "コード内の GEMINI_API_KEY が設定されていません。"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
+    model_name = "gemini-1.5-flash"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
     full_prompt = f"{system_prompt}\\n\\nUser: {prompt}"
     payload = {"contents": [{"parts": [{"text": full_prompt}]}]}
     try:
