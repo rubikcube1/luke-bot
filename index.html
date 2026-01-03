@@ -246,20 +246,25 @@ def call_groq(prompt, system_prompt=""):
         return str(e)
 
 def call_gemini(prompt, system_prompt=""):
-    model_name = "models/gemini-1.5-flash"
-    url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={GEMINI_API_KEY}"    
-  
-    full_prompt = f"{system_prompt}\\n\\nUser: {prompt}"
+
+    model_path = "models/gemini-1.5-flash"
+    url = f"https://generativelanguage.googleapis.com/v1/{model_path}:generateContent?key={GEMINI_API_KEY}"
+    
+    full_prompt = f"{system_prompt}\n\nUser: {prompt}"
     payload = {"contents": [{"parts": [{"text": full_prompt}]}]}
     
     try:
         resp = requests.post(url, json=payload)
         if resp.status_code != 200:
-            error_msg = resp.json().get("error", {}).get("message", str(resp.status_code))
-            return f"Error: {error_msg}"
+            try:
+                error_details = resp.json().get("error", {}).get("message", "Unknown error")
+            except:
+                error_details = resp.text
+            return f"Error {resp.status_code}: {error_details}"
+        
         return resp.json()['candidates'][0]['content']['parts'][0]['text']
     except Exception as e:
-        return str(e)
+        return f"Request failed: {str(e)}"
 
 def search_arxiv(query):
     base_url = "http://export.arxiv.org/api/query?"
