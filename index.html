@@ -242,7 +242,6 @@ def call_gemini(prompt, system_prompt=""):
         return "GEMINI_API_KEYが設定されていません。"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
-    # stlite(JavaScript)のテンプレートリテラル内では \n は \\n と書く必要があります
     payload = {
         "contents": [
             {
