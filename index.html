@@ -246,6 +246,7 @@ def call_gemini(prompt, system_prompt=""):
     model_path = "models/gemini-1.5-flash"
     url = f"https://generativelanguage.googleapis.com/v1/{model_path}:generateContent?key={GEMINI_API_KEY}"
     
+    # JavaScriptのテンプレートリテラル内では \\n と記述してPythonに \n を渡す必要がある
     full_prompt = f"{system_prompt}\\n\\nUser: {prompt}"
     payload = {
         "contents": [{"parts": [{"text": full_prompt}]}]
