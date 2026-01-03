@@ -240,7 +240,8 @@ def call_groq(prompt, system_prompt=""):
 def call_gemini(prompt, system_prompt=""):
     model_name = "gemini-1.5-flash"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
-        payload = {
+    
+    payload = {
         "contents": [
             {
                 "parts": [
@@ -264,13 +265,12 @@ def call_gemini(prompt, system_prompt=""):
                 if 'candidates' in res_json and res_json['candidates']:
                     return res_json['candidates'][0]['content']['parts'][0]['text']
                 return "Geminiから空のレスポンスが返されました。"
-            elif resp.status_code == 429:  # Rate Limit
+            elif resp.status_code == 429:
                 time.sleep(delay)
                 continue
             else:
                 break
         
-        # エラーメッセージを詳細に表示してデバッグしやすくする
         return f"エラーが発生しました (Status: {resp.status_code}): {resp.text}"
     except Exception as e:
         return f"リクエストに失敗しました: {str(e)}"
