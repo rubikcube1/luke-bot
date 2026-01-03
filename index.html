@@ -238,6 +238,8 @@ def call_groq(prompt, system_prompt=""):
         return str(e)
 
 def call_gemini(prompt, system_prompt=""):
+    if not GEMINI_API_KEY:
+        return "GEMINI_API_KEY is not set."
     
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
@@ -277,6 +279,8 @@ def search_arxiv(query):
         return "API Error"
 
 def call_wolfram(query):
+    if not WOLFRAM_APPID:
+        return "WOLFRAM_APPID is not set."
     url = f"http://api.wolframalpha.com/v1/result?appid={WOLFRAM_APPID}&i={query}"
     try:
         resp = requests.get(url)
@@ -305,10 +309,10 @@ if prompt := st.chat_input("メッセージを入力"):
         elif mode == "専門家対話":
             if "数学" in category_main:
                 wa_res = call_wolfram(prompt)
-                if "設定されていません" in wa_res:
-                    response = wa_res
+                if "Error" in wa_res or "No result" in wa_res:
+                    response = call_groq(prompt, f"Expert in {detail_item}")
                 else:
-                    response = call_groq(f"Wolfram: {wa_res} Query: {prompt}", f"Expert in {detail_item}")
+                    response = call_groq(f"Wolfram Result: {wa_res}\\nQuery: {prompt}", f"Expert in {detail_item}")
             else:
                 response = call_groq(prompt, f"Expert in {detail_item}")
         else:
